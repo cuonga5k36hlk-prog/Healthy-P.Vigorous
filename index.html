@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Health | Calo & Nước Uống Hằng Ngày</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="health-app">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand-tag">DAILY HEALTH DASHBOARD</div>
+      <h1>Cân Bằng Năng Lượng & Cơ Thể</h1>
+      <p>Tính toán Calo chuẩn xác và theo dõi mục tiêu nước uống mỗi ngày</p>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="dashboard-grid">
+      <!-- Cột 1: Tính toán Calo TDEE & BMR -->
+      <section class="card tdee-card">
+        <div class="card-header">
+          <i class="ph-fill ph-fire"></i>
+          <h2>Tính Toán Calo (BMR / TDEE)</h2>
+        </div>
+
+        <form id="tdeeForm" class="tdee-form">
+          <div class="form-row gender-row">
+            <label class="gender-btn active">
+              <input type="radio" name="gender" value="male" checked>
+              <span><i class="ph-fill ph-gender-male"></i> Nam</span>
+            </label>
+            <label class="gender-btn">
+              <input type="radio" name="gender" value="female">
+              <span><i class="ph-fill ph-gender-female"></i> Nữ</span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <div class="input-group">
+              <label for="age">Tuổi</label>
+              <input type="number" id="age" min="15" max="100" value="23" required>
+            </div>
+            <div class="input-group">
+              <label for="weight">Cân nặng (kg)</label>
+              <input type="number" id="weight" min="30" max="250" step="0.5" value="65" required>
+            </div>
+            <div class="input-group span-full">
+              <label for="height">Chiều cao (cm)</label>
+              <input type="number" id="height" min="100" max="230" value="170" required>
+            </div>
+          </div>
+
+          <div class="input-group span-full">
+            <label for="activity">Tần suất vận động thể chất</label>
+            <select id="activity">
+              <option value="1.2">Ít vận động (Dân văn phòng, chỉ ngồi)</option>
+              <option value="1.375" selected>Nhẹ (Tập nhẹ 1 - 3 buổi/tuần)</option>
+              <option value="1.55">Vừa phải (Tập thể thao 3 - 5 buổi/tuần)</option>
+              <option value="1.725">Năng động (Tập nặng 6 - 7 buổi/tuần)</option>
+              <option value="1.9">Cực độ (Vận động viên / Lao động nặng)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="calc-btn">
+            <i class="ph ph-calculator"></i> Tính Toán Kết Quả
+          </button>
+        </form>
+
+        <!-- Khung kết quả Calo -->
+        <div id="calorieResults" class="calorie-results">
+          <div class="metrics-row">
+            <div class="metric-box">
+              <span>BMR (Tối thiểu)</span>
+              <strong id="bmrValue">1,610</strong> <small>kcal/ngày</small>
+            </div>
+            <div class="metric-box highlight">
+              <span>TDEE (Duy trì)</span>
+              <strong id="tdeeValue">2,214</strong> <small>kcal/ngày</small>
+            </div>
+          </div>
+
+          <div class="goals-grid">
+            <div class="goal-item cut">
+              <span>Giảm cân an toàn (-500)</span>
+              <strong id="cutCalo">1,714</strong> kcal
+            </div>
+            <div class="goal-item maintain">
+              <span>Giữ nguyên cân nặng</span>
+              <strong id="maintainCalo">2,214</strong> kcal
+            </div>
+            <div class="goal-item bulk">
+              <span>Tăng cân / Cơ (+500)</span>
+              <strong id="bulkCalo">2,714</strong> kcal
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Cột 2: Theo dõi lượng nước uống -->
+      <section class="card water-card">
+        <div class="card-header">
+          <i class="ph-fill ph-drop"></i>
+          <h2>Theo Dõi Nước Uống Hằng Ngày</h2>
+        </div>
+
+        <div class="water-visual">
+          <div class="bottle-container">
+            <div class="water-wave" id="waterLevel" style="height: 0%;"></div>
+            <div class="bottle-meta">
+              <span id="waterPercent" class="percent-text">0%</span>
+              <span id="waterRatioText">0 / 2,000 ml</span>
+            </div>
+          </div>
+
+          <div class="water-progress-info">
+            <p id="waterMotivation">Hãy uống ngụm nước đầu tiên của ngày mới!</p>
+            <div class="target-setting">
+              <label for="customWaterTarget">Mục tiêu hằng ngày:</label>
+              <div class="target-input-row">
+                <input type="number" id="customWaterTarget" value="2000" step="100" min="500" max="6000">
+                <span>ml</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Các nút thêm nước nhanh -->
+        <div class="water-actions">
+          <span class="actions-label">Thêm nhanh lượng nước vừa uống:</span>
+          <div class="quick-buttons">
+            <button class="add-water-btn" data-amount="150">+150 ml (Tách nhỏ)</button>
+            <button class="add-water-btn" data-amount="250">+250 ml (Ly nước)</button>
+            <button class="add-water-btn" data-amount="500">+500 ml (Chai nước)</button>
+          </div>
+        </div>
+
+        <!-- Tùy chỉnh & Đặt lại -->
+        <div class="custom-water-row">
+          <form id="customWaterForm" class="custom-add-form">
+            <input type="number" id="customAmount" placeholder="Số ml khác..." min="10" max="2000" required>
+            <button type="submit" class="submit-add"><i class="ph ph-plus"></i></button>
+          </form>
+          <button id="resetWaterBtn" class="reset-btn" title="Đặt lại về 0">
+            <i class="ph ph-arrows-counter-clockwise"></i> Đặt lại
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Mẹo: Uống đều đặn từng ngụm nhỏ suốt cả ngày giúp cơ thể hấp thu nước tốt hơn uống dồn dập.</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
