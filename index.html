@@ -3,160 +3,660 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Health | Calo & Nước Uống Hằng Ngày</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
-  <link rel="stylesheet" href="style.css">
+  <title>Phàm Nhân Tiên Lộ - Demo Chiến Đấu PNTT</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+    body {
+      background-color: #0b0f12;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #game-container {
+      position: relative;
+      width: 1000px;
+      height: 650px;
+      border: 2px solid #2d3748;
+      box-shadow: 0 0 30px rgba(0, 240, 255, 0.15);
+      border-radius: 8px;
+      overflow: hidden;
+      background: radial-gradient(circle at center, #141e28 0%, #080c10 100%);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    /* Giao diện HUD */
+    #hud {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      font-size: 13px;
+      font-weight: 600;
+      text-shadow: 1px 1px 2px #000;
+    }
+    .bar-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 280px;
+    }
+    .bar-label {
+      width: 75px;
+      color: #cbd5e1;
+    }
+    .bar-bg {
+      flex: 1;
+      height: 14px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid #475569;
+      border-radius: 7px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      width: 100%;
+      transition: width 0.1s ease;
+    }
+    #hp-fill { background: linear-gradient(90deg, #dc2626, #ef4444); }
+    #mp-fill { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    #sense-fill { background: linear-gradient(90deg, #7c3aed, #c084fc); }
+
+    /* Hướng dẫn kỹ năng */
+    #skills-ui {
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      pointer-events: none;
+    }
+    .skill-box {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #334155;
+      padding: 6px 14px;
+      border-radius: 6px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .skill-key {
+      color: #38bdf8;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .skill-name {
+      color: #f1f5f9;
+      font-size: 12px;
+    }
+    .active-skill {
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+    }
+    #status-msg {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 14px;
+      color: #fbbf24;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 6px 12px;
+      border-radius: 4px;
+      border-left: 3px solid #fbbf24;
+    }
+  </style>
 </head>
 <body>
-  <div class="health-app">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="brand-tag">DAILY HEALTH DASHBOARD</div>
-      <h1>Cân Bằng Năng Lượng & Cơ Thể</h1>
-      <p>Tính toán Calo chuẩn xác và theo dõi mục tiêu nước uống mỗi ngày</p>
-    </header>
 
-    <!-- Main Layout -->
-    <main class="dashboard-grid">
-      <!-- Cột 1: Tính toán Calo TDEE & BMR -->
-      <section class="card tdee-card">
-        <div class="card-header">
-          <i class="ph-fill ph-fire"></i>
-          <h2>Tính Toán Calo (BMR / TDEE)</h2>
-        </div>
+  <div id="game-container">
+    <canvas id="gameCanvas" width="1000" height="650"></canvas>
 
-        <form id="tdeeForm" class="tdee-form">
-          <div class="form-row gender-row">
-            <label class="gender-btn active">
-              <input type="radio" name="gender" value="male" checked>
-              <span><i class="ph-fill ph-gender-male"></i> Nam</span>
-            </label>
-            <label class="gender-btn">
-              <input type="radio" name="gender" value="female">
-              <span><i class="ph-fill ph-gender-female"></i> Nữ</span>
-            </label>
-          </div>
+    <div id="hud">
+      <div class="bar-container">
+        <span class="bar-label">Khí Huyết:</span>
+        <div class="bar-bg"><div id="hp-fill" class="bar-fill"></div></div>
+      </div>
+      <div class="bar-container">
+        <span class="bar-label">Pháp Lực:</span>
+        <div class="bar-bg"><div id="mp-fill" class="bar-fill"></div></div>
+      </div>
+      <div class="bar-container">
+        <span class="bar-label">Thần Thức:</span>
+        <div class="bar-bg"><div id="sense-fill" class="bar-fill"></div></div>
+      </div>
+    </div>
 
-          <div class="form-grid">
-            <div class="input-group">
-              <label for="age">Tuổi</label>
-              <input type="number" id="age" min="15" max="100" value="23" required>
-            </div>
-            <div class="input-group">
-              <label for="weight">Cân nặng (kg)</label>
-              <input type="number" id="weight" min="30" max="250" step="0.5" value="65" required>
-            </div>
-            <div class="input-group span-full">
-              <label for="height">Chiều cao (cm)</label>
-              <input type="number" id="height" min="100" max="230" value="170" required>
-            </div>
-          </div>
+    <div id="status-msg">Cảnh giới: Trúc Cơ Sơ Kỳ</div>
 
-          <div class="input-group span-full">
-            <label for="activity">Tần suất vận động thể chất</label>
-            <select id="activity">
-              <option value="1.2">Ít vận động (Dân văn phòng, chỉ ngồi)</option>
-              <option value="1.375" selected>Nhẹ (Tập nhẹ 1 - 3 buổi/tuần)</option>
-              <option value="1.55">Vừa phải (Tập thể thao 3 - 5 buổi/tuần)</option>
-              <option value="1.725">Năng động (Tập nặng 6 - 7 buổi/tuần)</option>
-              <option value="1.9">Cực độ (Vận động viên / Lao động nặng)</option>
-            </select>
-          </div>
-
-          <button type="submit" class="calc-btn">
-            <i class="ph ph-calculator"></i> Tính Toán Kết Quả
-          </button>
-        </form>
-
-        <!-- Khung kết quả Calo -->
-        <div id="calorieResults" class="calorie-results">
-          <div class="metrics-row">
-            <div class="metric-box">
-              <span>BMR (Tối thiểu)</span>
-              <strong id="bmrValue">1,610</strong> <small>kcal/ngày</small>
-            </div>
-            <div class="metric-box highlight">
-              <span>TDEE (Duy trì)</span>
-              <strong id="tdeeValue">2,214</strong> <small>kcal/ngày</small>
-            </div>
-          </div>
-
-          <div class="goals-grid">
-            <div class="goal-item cut">
-              <span>Giảm cân an toàn (-500)</span>
-              <strong id="cutCalo">1,714</strong> kcal
-            </div>
-            <div class="goal-item maintain">
-              <span>Giữ nguyên cân nặng</span>
-              <strong id="maintainCalo">2,214</strong> kcal
-            </div>
-            <div class="goal-item bulk">
-              <span>Tăng cân / Cơ (+500)</span>
-              <strong id="bulkCalo">2,714</strong> kcal
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Cột 2: Theo dõi lượng nước uống -->
-      <section class="card water-card">
-        <div class="card-header">
-          <i class="ph-fill ph-drop"></i>
-          <h2>Theo Dõi Nước Uống Hằng Ngày</h2>
-        </div>
-
-        <div class="water-visual">
-          <div class="bottle-container">
-            <div class="water-wave" id="waterLevel" style="height: 0%;"></div>
-            <div class="bottle-meta">
-              <span id="waterPercent" class="percent-text">0%</span>
-              <span id="waterRatioText">0 / 2,000 ml</span>
-            </div>
-          </div>
-
-          <div class="water-progress-info">
-            <p id="waterMotivation">Hãy uống ngụm nước đầu tiên của ngày mới!</p>
-            <div class="target-setting">
-              <label for="customWaterTarget">Mục tiêu hằng ngày:</label>
-              <div class="target-input-row">
-                <input type="number" id="customWaterTarget" value="2000" step="100" min="500" max="6000">
-                <span>ml</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Các nút thêm nước nhanh -->
-        <div class="water-actions">
-          <span class="actions-label">Thêm nhanh lượng nước vừa uống:</span>
-          <div class="quick-buttons">
-            <button class="add-water-btn" data-amount="150">+150 ml (Tách nhỏ)</button>
-            <button class="add-water-btn" data-amount="250">+250 ml (Ly nước)</button>
-            <button class="add-water-btn" data-amount="500">+500 ml (Chai nước)</button>
-          </div>
-        </div>
-
-        <!-- Tùy chỉnh & Đặt lại -->
-        <div class="custom-water-row">
-          <form id="customWaterForm" class="custom-add-form">
-            <input type="number" id="customAmount" placeholder="Số ml khác..." min="10" max="2000" required>
-            <button type="submit" class="submit-add"><i class="ph ph-plus"></i></button>
-          </form>
-          <button id="resetWaterBtn" class="reset-btn" title="Đặt lại về 0">
-            <i class="ph ph-arrows-counter-clockwise"></i> Đặt lại
-          </button>
-        </div>
-      </section>
-    </main>
-
-    <footer class="app-footer">
-      <p>Mẹo: Uống đều đặn từng ngụm nhỏ suốt cả ngày giúp cơ thể hấp thu nước tốt hơn uống dồn dập.</p>
-    </footer>
+    <div id="skills-ui">
+      <div class="skill-box">
+        <span class="skill-key">Chuột Trái</span>
+        <span class="skill-name">Phóng Kiếm</span>
+      </div>
+      <div class="skill-box" id="skill-space">
+        <span class="skill-key">Space</span>
+        <span class="skill-name">Phong Lôi Dực</span>
+      </div>
+      <div class="skill-box" id="skill-q">
+        <span class="skill-key">Phím Q</span>
+        <span class="skill-name">Kiếm Trận (30 MP)</span>
+      </div>
+      <div class="skill-box" id="skill-e">
+        <span class="skill-key">Phím E</span>
+        <span class="skill-name">Liễm Khí Thuật</span>
+      </div>
+    </div>
   </div>
 
-  <script src="script.js"></script>
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // UI elements
+    const hpFill = document.getElementById('hp-fill');
+    const mpFill = document.getElementById('mp-fill');
+    const senseFill = document.getElementById('sense-fill');
+    const skillEBox = document.getElementById('skill-e');
+    const statusMsg = document.getElementById('status-msg');
+
+    // Quản lý phím bấm & chuột
+    const keys = {};
+    const mouse = { x: 0, y: 0, isDown: false };
+
+    window.addEventListener('keydown', e => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key === ' ') e.preventDefault();
+      
+      // Kích hoạt Liễm Khí Thuật (Toggle E)
+      if (e.key.toLowerCase() === 'e') {
+        player.stealth = !player.stealth;
+        skillEBox.classList.toggle('active-skill', player.stealth);
+        statusMsg.innerText = player.stealth ? "Đang thi triển: Liễm Khí Thuật (Ẩn tức)" : "Cảnh giới: Trúc Cơ Sơ Kỳ";
+        statusMsg.style.color = player.stealth ? "#38bdf8" : "#fbbf24";
+      }
+
+      // Kích hoạt Kiếm Trận (Q)
+      if (e.key.toLowerCase() === 'q') {
+        activateSwordArray();
+      }
+    });
+
+    window.addEventListener('keyup', e => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    });
+
+    canvas.addEventListener('mousedown', e => {
+      if (e.button === 0) fireSwordTowards(mouse.x, mouse.y);
+    });
+
+    // --- ĐỐI TƯỢNG NHÂN VẬT CHÍNH ---
+    const player = {
+      x: 500,
+      y: 325,
+      radius: 16,
+      speed: 3.2,
+      hp: 100,
+      maxHp: 100,
+      mp: 100,
+      maxMp: 100,
+      spiritualSense: 12, // Tải tối đa 12 phi kiếm
+      availableSwords: 12,
+      orbitSwords: 12,
+      orbitAngle: 0,
+      dashCooldown: 0,
+      isInvulnerable: false,
+      stealth: false
+    };
+
+    // --- MẢNG QUẢN LÝ THỰC THỂ ---
+    const activeProjectiles = []; // Phi kiếm người chơi bắn ra
+    const enemyProjectiles = [];  // Pháp thuật quái bắn ra
+    const enemies = [];
+    const particles = [];
+    const swordArrays = [];
+
+    // Tạo quái ban đầu (Ma tu & Tán tu săn bảo)
+    function spawnEnemy(x, y, name, type = 'caster') {
+      enemies.push({
+        x, y,
+        name,
+        type,
+        radius: 18,
+        hp: 120,
+        maxHp: 120,
+        speed: 1.5,
+        attackCooldown: 60,
+        detectRange: 320
+      });
+    }
+
+    spawnEnemy(150, 150, "Cực Âm Môn Đồ");
+    spawnEnemy(850, 150, "Tán Tu Đoạt Bảo");
+    spawnEnemy(500, 100, "Ma Tu Trúc Cơ", 'berserker');
+
+    // --- HỆ THỐNG CHIẾN ĐẤU & KỸ NĂNG ---
+
+    // 1. Phóng phi kiếm cơ bản (Tốn 1 tải kiếm trong quỹ đạo)
+    function fireSwordTowards(tx, ty) {
+      if (player.orbitSwords <= 0) return;
+
+      player.orbitSwords--;
+      const angle = Math.atan2(ty - player.y, tx - player.x);
+      
+      activeProjectiles.push({
+        x: player.x,
+        y: player.y,
+        vx: Math.cos(angle) * 14,
+        vy: Math.sin(angle) * 14,
+        angle: angle,
+        life: 55,
+        damage: 28,
+        state: 'flying' // flying -> returning
+      });
+
+      // Tạo hạt lôi quang khi xuất chiêu
+      createSparks(player.x, player.y, '#38bdf8', 6);
+    }
+
+    // 2. Kích hoạt Kiếm Trận (Phím Q)
+    function activateSwordArray() {
+      if (player.mp < 30) return;
+      if (player.orbitSwords < 6) return; // Cần tối thiểu 6 kiếm
+
+      player.mp -= 30;
+      const count = 12;
+      const radius = 110;
+      player.orbitSwords -= 8;
+
+      swordArrays.push({
+        x: mouse.x,
+        y: mouse.y,
+        radius: radius,
+        duration: 260, // ~4.5s
+        swordsCount: count,
+        tick: 0
+      });
+
+      createSparks(mouse.x, mouse.y, '#c084fc', 20);
+    }
+
+    // 3. Phong Lôi Dực - Độn thuật né đòn (Space)
+    function triggerDash(dx, dy) {
+      if (player.dashCooldown > 0 || player.mp < 12) return;
+
+      player.mp -= 12;
+      player.dashCooldown = 60; // 1s cooldown
+      player.isInvulnerable = true;
+
+      const len = Math.hypot(dx, dy) || 1;
+      const dashDist = 110;
+      
+      // Tạo bóng mờ độn thuật
+      for (let i = 0; i < 4; i++) {
+        particles.push({
+          x: player.x + (dx / len) * (i * 25),
+          y: player.y + (dy / len) * (i * 25),
+          radius: 12,
+          color: '#38bdf8',
+          alpha: 0.6,
+          decay: 0.05
+        });
+      }
+
+      player.x += (dx / len) * dashDist;
+      player.y += (dy / len) * dashDist;
+
+      // Giữ vị trí trong map
+      player.x = Math.max(30, Math.min(canvas.width - 30, player.x));
+      player.y = Math.max(30, Math.min(canvas.height - 30, player.y));
+
+      setTimeout(() => { player.isInvulnerable = false; }, 300);
+    }
+
+    function createSparks(x, y, color, amount) {
+      for (let i = 0; i < amount; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 4 + 1;
+        particles.push({
+          x, y,
+          vx: Math.cos(ang) * spd,
+          vy: Math.sin(ang) * spd,
+          radius: Math.random() * 2.5 + 1,
+          color: color,
+          alpha: 1,
+          decay: 0.03
+        });
+      }
+    }
+
+    // --- VÒNG LẶP CẬP NHẬT GAME ENGINE (UPDATE LOOP) ---
+    function update() {
+      // Hồi phục Pháp lực nhẹ
+      if (player.mp < player.maxMp) player.mp += 0.08;
+      if (player.dashCooldown > 0) player.dashCooldown--;
+
+      // Di chuyển nhân vật
+      let mx = 0, my = 0;
+      if (keys['w'] || keys['arrowup']) my -= 1;
+      if (keys['s'] || keys['arrowdown']) my += 1;
+      if (keys['a'] || keys['arrowleft']) mx -= 1;
+      if (keys['d'] || keys['arrowright']) mx += 1;
+
+      if (mx !== 0 || my !== 0) {
+        const len = Math.hypot(mx, my);
+        player.x += (mx / len) * player.speed;
+        player.y += (my / len) * player.speed;
+
+        // Phím Space để lướt độn thuật
+        if (keys[' ']) triggerDash(mx, my);
+      }
+
+      // Giữ người chơi trong map
+      player.x = Math.max(25, Math.min(canvas.width - 25, player.x));
+      player.y = Math.max(25, Math.min(canvas.height - 25, player.y));
+
+      // Quay quỹ đạo kiếm quanh thân
+      player.orbitAngle += 0.035;
+
+      // Hồi kiếm về đan điền khi không có kiếm bay
+      if (player.orbitSwords < player.spiritualSense && activeProjectiles.length === 0 && swordArrays.length === 0) {
+        player.orbitSwords += 0.04;
+      }
+
+      // 1. Cập nhật phi kiếm phóng đi
+      for (let i = activeProjectiles.length - 1; i >= 0; i--) {
+        const p = activeProjectiles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+
+        // Va chạm quái
+        for (const e of enemies) {
+          if (Math.hypot(p.x - e.x, p.y - e.y) < e.radius + 6) {
+            e.hp -= p.damage;
+            createSparks(p.x, p.y, '#e2e8f0', 8);
+            p.life = 0;
+            break;
+          }
+        }
+
+        if (p.life <= 0) {
+          activeProjectiles.splice(i, 1);
+          if (player.orbitSwords < player.spiritualSense) player.orbitSwords++;
+        }
+      }
+
+      // 2. Cập nhật Kiếm Trận
+      for (let i = swordArrays.length - 1; i >= 0; i--) {
+        const sa = swordArrays[i];
+        sa.duration--;
+        sa.tick++;
+
+        // Hiệu ứng giật sét và gây sát thương định kỳ
+        if (sa.tick % 15 === 0) {
+          for (const e of enemies) {
+            if (Math.hypot(e.x - sa.x, e.y - sa.y) < sa.radius) {
+              e.hp -= 8;
+              e.speed = 0.5; // Làm chậm kẻ địch
+              createSparks(e.x, e.y, '#fbbf24', 5);
+            }
+          }
+        }
+
+        if (sa.duration <= 0) {
+          player.orbitSwords = Math.min(player.spiritualSense, player.orbitSwords + 8);
+          swordArrays.splice(i, 1);
+        }
+      }
+
+      // 3. Cập nhật Kẻ địch & AI
+      for (let i = enemies.length - 1; i >= 0; i--) {
+        const e = enemies[i];
+        if (e.hp <= 0) {
+          createSparks(e.x, e.y, '#ef4444', 25);
+          enemies.splice(i, 1);
+          continue;
+        }
+
+        const distToPlayer = Math.hypot(player.x - e.x, player.y - e.y);
+        // Tầm phát hiện bị giảm mạnh nếu người chơi dùng Liễm Khí Thuật
+        const effectiveDetect = player.stealth ? e.detectRange * 0.25 : e.detectRange;
+
+        if (distToPlayer < effectiveDetect) {
+          // Áp sát
+          const angle = Math.atan2(player.y - e.y, player.x - e.x);
+          e.x += Math.cos(angle) * e.speed;
+          e.y += Math.sin(angle) * e.speed;
+
+          // Bắn ma hỏa / kiếm khí
+          e.attackCooldown--;
+          if (e.attackCooldown <= 0) {
+            e.attackCooldown = 75;
+            enemyProjectiles.push({
+              x: e.x,
+              y: e.y,
+              vx: Math.cos(angle) * 5,
+              vy: Math.sin(angle) * 5,
+              radius: 6,
+              damage: 16
+            });
+          }
+        } else {
+          // Trả lại tốc độ nếu thoát khỏi kiếm trận
+          e.speed = 1.5;
+        }
+      }
+
+      // 4. Đòn đánh của quái
+      for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+        const ep = enemyProjectiles[i];
+        ep.x += ep.vx;
+        ep.y += ep.vy;
+
+        // Trúng người chơi
+        if (Math.hypot(ep.x - player.x, ep.y - player.y) < player.radius + ep.radius) {
+          if (!player.isInvulnerable) {
+            player.hp -= ep.damage;
+            createSparks(player.x, player.y, '#ef4444', 10);
+            if (player.hp <= 0) {
+              alert("Bạn đã vẫn lạc! Hãy tải lại trang để trọng sinh.");
+              window.location.reload();
+            }
+          }
+          enemyProjectiles.splice(i, 1);
+          continue;
+        }
+
+        // Ra khỏi map
+        if (ep.x < 0 || ep.x > canvas.width || ep.y < 0 || ep.y > canvas.height) {
+          enemyProjectiles.splice(i, 1);
+        }
+      }
+
+      // 5. Cập nhật hiệu ứng hạt (Particles)
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const pt = particles[i];
+        pt.x += pt.vx || 0;
+        pt.y += pt.vy || 0;
+        pt.alpha -= pt.decay;
+        if (pt.alpha <= 0) particles.splice(i, 1);
+      }
+
+      // Đồng bộ thanh HUD
+      hpFill.style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+      mpFill.style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
+      senseFill.style.width = `${(Math.floor(player.orbitSwords) / player.spiritualSense) * 100}%`;
+    }
+
+    // --- VẼ ĐỒ HỌA TRỰC QUAN (RENDER LOOP) ---
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Vẽ Kiếm Trận (Nếu có)
+      for (const sa of swordArrays) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(sa.x, sa.y, sa.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(192, 132, 252, 0.12)';
+        ctx.fill();
+        ctx.strokeStyle = '#a855f7';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([8, 6]);
+        ctx.stroke();
+
+        // Vẽ các thanh kiếm cắm xung quanh vòng tròn
+        for (let i = 0; i < sa.swordsCount; i++) {
+          const ang = (Math.PI * 2 / sa.swordsCount) * i + (sa.tick * 0.02);
+          const sx = sa.x + Math.cos(ang) * sa.radius;
+          const sy = sa.y + Math.sin(ang) * sa.radius;
+
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(sx - 2, sy - 8, 4, 16);
+
+          // Tia sét nối giữa các thanh kiếm
+          if (Math.random() > 0.4) {
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sa.x, sa.y);
+            ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+        }
+        ctx.restore();
+      }
+
+      // 2. Vẽ Hạt hiệu ứng
+      for (const pt of particles) {
+        ctx.save();
+        ctx.globalAlpha = pt.alpha;
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 3. Vẽ Kẻ địch
+      for (const e of enemies) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
+        ctx.fillStyle = e.type === 'berserker' ? '#991b1b' : '#334155';
+        ctx.fill();
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Tên quái
+        ctx.fillStyle = '#f87171';
+        ctx.font = '11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(e.name, e.x, e.y - e.radius - 8);
+
+        // Thanh máu quái
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.fillRect(e.x - 20, e.y - e.radius - 6, 40, 4);
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(e.x - 20, e.y - e.radius - 6, (e.hp / e.maxHp) * 40, 4);
+        ctx.restore();
+      }
+
+      // 4. Vẽ Chiêu thức của quái (Ma hỏa)
+      for (const ep of enemyProjectiles) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(ep.x, ep.y, ep.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#dc2626';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 10;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 5. Vẽ Phi kiếm bay đi của người chơi
+      for (const p of activeProjectiles) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.angle);
+        ctx.fillStyle = '#38bdf8';
+        ctx.shadowColor = '#38bdf8';
+        ctx.shadowBlur = 12;
+        // Hình dáng kiếm nhọn
+        ctx.beginPath();
+        ctx.moveTo(14, 0);
+        ctx.lineTo(-10, -4);
+        ctx.lineTo(-6, 0);
+        ctx.lineTo(-10, 4);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 6. Vẽ Người chơi
+      ctx.save();
+      // Vòng hào quang hộ thể
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius + 4, 0, Math.PI * 2);
+      ctx.strokeStyle = player.stealth ? 'rgba(56, 189, 248, 0.2)' : 'rgba(56, 189, 248, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Thân thể
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fillStyle = player.stealth ? '#1e293b' : '#0284c7';
+      ctx.fill();
+
+      // Vẽ các phi kiếm đang bay quanh người (Theo số lượng orbitSwords)
+      const count = Math.floor(player.orbitSwords);
+      for (let i = 0; i < count; i++) {
+        const ang = player.orbitAngle + (Math.PI * 2 / count) * i;
+        const dist = 36;
+        const kx = player.x + Math.cos(ang) * dist;
+        const ky = player.y + Math.sin(ang) * dist;
+
+        ctx.save();
+        ctx.translate(kx, ky);
+        ctx.rotate(ang + Math.PI / 2);
+        ctx.fillStyle = '#7dd3fc';
+        ctx.fillRect(-2, -7, 4, 14);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // Vòng lặp chính chuẩn 60fps
+    function gameLoop() {
+      update();
+      render();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+  </script>
 </body>
 </html>
