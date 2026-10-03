@@ -3,518 +3,477 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Phàm Nhân Tu Tiên 3D - Quyết Đấu Lôi Đài</title>
-  <!-- Thư viện Three.js CDN -->
+  <title>Phàm Nhân Tu Tiên 3D - Siêu Phẩm Đối Kháng</title>
+  
+  <!-- Three.js Core & GLTF Loader -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  
+  <!-- Postprocessing: Unreal Bloom Effect -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      user-select: none;
+    * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+    body { background-color: #010408; overflow: hidden; height: 100vh; font-family: 'Cinzel', 'Segoe UI', serif; }
+    #canvas-container { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; }
+    
+    /* Giao Diện Game Đẳng Cấp Tiên Hiệp */
+    .hud-layer { position: absolute; pointer-events: none; z-index: 10; width: 100%; height: 100%; }
+
+    /* Thanh máu Boss (Phía trên cùng) */
+    #boss-container {
+      position: absolute; top: 25px; left: 50%; transform: translateX(-50%);
+      width: 580px; text-align: center;
+    }
+    .boss-name {
+      font-size: 16px; font-weight: bold; color: #f87171; letter-spacing: 3px;
+      text-transform: uppercase; margin-bottom: 6px; text-shadow: 0 0 10px #ef4444;
+    }
+    .boss-bar-bg {
+      width: 100%; height: 14px; background: rgba(15, 23, 42, 0.85);
+      border: 1.5px solid #7f1d1d; border-radius: 7px; overflow: hidden;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+    }
+    #boss-hp-fill {
+      width: 100%; height: 100%; background: linear-gradient(90deg, #991b1b, #ef4444);
+      transition: width 0.15s ease-out; box-shadow: 0 0 12px #ef4444;
     }
 
-    body {
-      background-color: #05080c;
-      color: #f8fafc;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      overflow: hidden;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    /* Thanh Chỉ Số Nhân Vật (Góc dưới bên trái) */
+    #player-stats {
+      position: absolute; bottom: 30px; left: 30px; width: 320px;
+      background: rgba(4, 9, 20, 0.75); border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 16px; border-radius: 8px; backdrop-filter: blur(8px);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.15);
     }
+    .player-title { font-size: 14px; font-weight: bold; color: #38bdf8; margin-bottom: 10px; letter-spacing: 1px; }
+    .stat-row { display: flex; align-items: center; margin-bottom: 6px; font-size: 12px; gap: 8px; }
+    .stat-label { width: 75px; color: #94a3b8; font-weight: 600; }
+    .stat-bar { flex: 1; height: 10px; background: #0f172a; border-radius: 5px; overflow: hidden; border: 1px solid #334155; }
+    .fill { height: 100%; width: 100%; transition: width 0.1s; }
+    #hp-bar { background: linear-gradient(90deg, #dc2626, #ef4444); }
+    #mp-bar { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+    #sense-bar { background: linear-gradient(90deg, #7c3aed, #c084fc); }
 
-    #game-container {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
+    /* Hướng dẫn thao tác */
+    #skill-deck {
+      position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 12px;
     }
+    .deck-item {
+      background: rgba(10, 17, 32, 0.85); border: 1px solid rgba(56, 189, 248, 0.25);
+      padding: 8px 16px; border-radius: 6px; text-align: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+    .deck-key { font-size: 11px; color: #38bdf8; font-weight: bold; display: block; }
+    .deck-name { font-size: 13px; color: #f1f5f9; font-weight: 600; }
 
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
+    /* Hồng tâm khóa mục tiêu */
+    #lock-reticle {
+      position: absolute; width: 44px; height: 44px; border: 2px dashed #ef4444;
+      border-radius: 50%; display: none; transform: translate(-50%, -50%);
+      animation: spinReticle 4s linear infinite; box-shadow: 0 0 10px #ef4444;
     }
+    @keyframes spinReticle { 100% { transform: translate(-50%, -50%) rotate(360deg); } }
 
-    /* Bảng giao diện HUD */
-    .hud-panel {
-      position: absolute;
-      background: rgba(10, 15, 26, 0.75);
-      padding: 12px 18px;
-      border-radius: 8px;
-      border: 1px solid rgba(56, 189, 248, 0.25);
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-      pointer-events: none;
-      z-index: 10;
+    /* Màn hình loading */
+    #loader {
+      position: absolute; width: 100%; height: 100%; background: #020408;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      z-index: 100; color: #38bdf8; font-size: 20px; letter-spacing: 2px;
     }
-
-    #player-hud {
-      top: 20px;
-      left: 20px;
-      width: 320px;
+    .spinner {
+      width: 50px; height: 50px; border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8; border-radius: 50%; animation: spin 1s infinite linear;
+      margin-bottom: 20px;
     }
-
-    #boss-hud {
-      top: 20px;
-      right: 20px;
-      width: 360px;
-      border-color: rgba(239, 68, 68, 0.4);
-    }
-
-    .character-name {
-      font-size: 14px;
-      font-weight: bold;
-      color: #38bdf8;
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-
-    .boss-title {
-      color: #f87171;
-      text-align: right;
-    }
-
-    .boss-status-text {
-      font-size: 11px;
-      color: #fca5a5;
-      text-align: right;
-      margin-top: 4px;
-    }
-
-    .bar-group {
-      display: flex;
-      align-items: center;
-      margin-bottom: 6px;
-      gap: 10px;
-      font-size: 12px;
-    }
-
-    .label {
-      width: 65px;
-      color: #94a3b8;
-    }
-
-    .bar-bg {
-      flex: 1;
-      height: 12px;
-      background: #0f172a;
-      border-radius: 6px;
-      overflow: hidden;
-      border: 1px solid #334155;
-    }
-
-    .bar-fill {
-      height: 100%;
-      width: 100%;
-      transition: width 0.15s ease-out;
-    }
-
-    .bar-fill.hp {
-      background: linear-gradient(90deg, #dc2626, #ef4444);
-    }
-
-    .bar-fill.mp {
-      background: linear-gradient(90deg, #0284c7, #38bdf8);
-    }
-
-    .bar-fill.sense {
-      background: linear-gradient(90deg, #7c3aed, #a855f7);
-    }
-
-    .bar-fill.boss-hp {
-      background: linear-gradient(90deg, #991b1b, #ef4444);
-    }
-
-    /* Bảng hiển thị phím kỹ năng */
-    #skills-ui {
-      position: absolute;
-      bottom: 25px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 14px;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    .skill-item {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid #334155;
-      padding: 8px 16px;
-      border-radius: 6px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-    }
-
-    .skill-item .key {
-      font-size: 11px;
-      color: #38bdf8;
-      font-weight: bold;
-    }
-
-    .skill-item .name {
-      font-size: 13px;
-      font-weight: 500;
-      color: #e2e8f0;
-    }
-
-    #crosshair {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: rgba(255, 255, 255, 0.4);
-      font-size: 20px;
-      pointer-events: none;
-      z-index: 10;
-    }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
 
-  <div id="game-container">
-    <!-- HUD Người Chơi -->
-    <div id="player-hud" class="hud-panel">
-      <div class="character-name">Hàn Lập (Trúc Cơ Kỳ)</div>
-      <div class="bar-group">
-        <span class="label">Khí Huyết:</span>
-        <div class="bar-bg"><div id="player-hp" class="bar-fill hp"></div></div>
-      </div>
-      <div class="bar-group">
-        <span class="label">Pháp Lực:</span>
-        <div class="bar-bg"><div id="player-mp" class="bar-fill mp"></div></div>
-      </div>
-      <div class="bar-group">
-        <span class="label">Thần Thức:</span>
-        <div class="bar-bg"><div id="player-sense" class="bar-fill sense"></div></div>
+  <div id="loader">
+    <div class="spinner"></div>
+    <div>Đang Tụ Linh Khí & Tải Mô Hình 3D...</div>
+  </div>
+
+  <div id="canvas-container"></div>
+
+  <div class="hud-layer">
+    <!-- Boss HUD -->
+    <div id="boss-container">
+      <div class="boss-name">Cực Âm Tổ Sư (Nguyên Anh Kỳ)</div>
+      <div class="boss-bar-bg">
+        <div id="boss-hp-fill"></div>
       </div>
     </div>
 
-    <!-- HUD Boss Đối Kháng -->
-    <div id="boss-hud" class="hud-panel">
-      <div class="character-name boss-title">Cực Âm Ma Tu (Kết Đan Sơ Kỳ)</div>
-      <div class="bar-group">
-        <span class="label">Ma Lực:</span>
-        <div class="bar-bg"><div id="boss-hp" class="bar-fill boss-hp"></div></div>
+    <!-- Player HUD -->
+    <div id="player-stats">
+      <div class="player-title">Hàn Lập (Trúc Cơ Kỳ)</div>
+      <div class="stat-row">
+        <span class="stat-label">Khí Huyết</span>
+        <div class="stat-bar"><div id="hp-bar" class="fill"></div></div>
       </div>
-      <div id="boss-state" class="boss-status-text">Trạng thái: Cuồng nộ</div>
-    </div>
-
-    <!-- Bảng Kỹ Năng / Phím Điều Khiển -->
-    <div id="skills-ui">
-      <div class="skill-item">
-        <span class="key">Chuột Trái / J</span>
-        <span class="name">Ngự Kiếm Quyết</span>
+      <div class="stat-row">
+        <span class="stat-label">Pháp Lực</span>
+        <div class="stat-bar"><div id="mp-bar" class="fill"></div></div>
       </div>
-      <div class="skill-item">
-        <span class="key">Space / K</span>
-        <span class="name">Phong Lôi Dực</span>
-      </div>
-      <div class="skill-item">
-        <span class="key">Q / U</span>
-        <span class="name">Kiếm Trận (40 MP)</span>
-      </div>
-      <div class="skill-item">
-        <span class="key">E / I</span>
-        <span class="name">Liễm Khí / Hộ Thể</span>
+      <div class="stat-row">
+        <span class="stat-label">Thần Thức</span>
+        <div class="stat-bar"><div id="sense-bar" class="fill"></div></div>
       </div>
     </div>
 
-    <div id="crosshair">+</div>
+    <!-- Deck kỹ năng -->
+    <div id="skill-deck">
+      <div class="deck-item"><span class="deck-key">Chuột Trái / J</span><span class="deck-name">Vạn Kiếm Quyết</span></div>
+      <div class="deck-item"><span class="deck-key">Space / K</span><span class="deck-name">Phong Lôi Dực</span></div>
+      <div class="deck-item"><span class="deck-key">Q / U</span><span class="deck-name">Kiếm Trận (40 MP)</span></div>
+      <div class="deck-item"><span class="deck-key">Tab</span><span class="deck-name">Khóa Mục Tiêu</span></div>
+    </div>
+
+    <div id="lock-reticle"></div>
   </div>
 
   <script>
-    // Thiết lập Three.js Scene, Camera, Renderer
-    const container = document.getElementById('game-container');
+    // --- 1. KHỞI TẠO THREE.JS VÀ POST-PROCESSING ---
+    const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0f1d);
-    scene.fog = new THREE.FogExp2(0x0a0f1d, 0.015);
+    scene.background = new THREE.Color(0x02040a);
+    scene.fog = new THREE.FogExp2(0x02040a, 0.012);
 
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.3;
     container.appendChild(renderer.domElement);
 
-    // Hệ thống chiếu sáng
-    const ambientLight = new THREE.AmbientLight(0x334155, 1.2);
-    scene.add(ambientLight);
+    // Unreal Bloom: Tạo hiệu ứng phát sáng cho kiếm và ma khí
+    const renderScene = new THREE.RenderPass(scene, camera);
+    const bloomPass = new THREE.UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight),
+      1.6,  // Strength
+      0.35, // Radius
+      0.2   // Threshold
+    );
+    const composer = new THREE.EffectComposer(renderer);
+    composer.addPass(renderScene);
+    composer.addPass(bloomPass);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.8);
-    dirLight.position.set(20, 40, 20);
-    dirLight.castShadow = true;
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    scene.add(dirLight);
+    // Ánh sáng môi trường
+    const ambLight = new THREE.AmbientLight(0x0a1428, 2.2);
+    scene.add(ambLight);
 
-    // Điểm sáng lôi đài trung tâm
-    const arenaLight = new THREE.PointLight(0x38bdf8, 2, 40);
-    arenaLight.position.set(0, 10, 0);
-    scene.add(arenaLight);
+    const mainLight = new THREE.DirectionalLight(0xdbeafe, 2.5);
+    mainLight.position.set(25, 45, 20);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 2048;
+    mainLight.shadow.mapSize.height = 2048;
+    scene.add(mainLight);
 
-    // Sàn đấu Lôi Đài Thạch (Arena Platform)
-    const arenaGeo = new THREE.CylinderGeometry(35, 38, 2, 64);
-    const arenaMat = new THREE.MeshStandardMaterial({ 
-      color: 0x1e293b, 
-      roughness: 0.8,
-      metalness: 0.2
-    });
-    const arena = new THREE.Mesh(arenaGeo, arenaMat);
-    arena.position.y = -1;
-    arena.receiveShadow = true;
-    scene.add(arena);
+    // --- 2. SÀN ĐẤU CỔ TRẬN BÁT QUÁI ---
+    function buildArenaTexture() {
+      const cv = document.createElement('canvas');
+      cv.width = 1024; cv.height = 1024;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = '#060a12'; ctx.fillRect(0, 0, 1024, 1024);
+      ctx.strokeStyle = '#00f0ff'; ctx.lineWidth = 5;
+      ctx.shadowColor = '#00f0ff'; ctx.shadowBlur = 18;
 
-    // Vòng ranh giới Lôi Đài Cấm Chế
-    const ringGeo = new THREE.RingGeometry(34.8, 35.2, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide });
-    const arenaRing = new THREE.Mesh(ringGeo, ringMat);
-    arenaRing.rotation.x = -Math.PI / 2;
-    arenaRing.position.y = 0.02;
-    scene.add(arenaRing);
+      ctx.beginPath(); ctx.arc(512, 512, 480, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(512, 512, 360, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(512, 512, 200, 0, Math.PI * 2); ctx.stroke();
 
-    // --- NHÂN VẬT CHÍNH (HÀN LẬP) ---
-    const playerGroup = new THREE.Group();
-    scene.add(playerGroup);
-
-    // Thân đạo bào thanh y
-    const bodyGeo = new THREE.CylinderGeometry(0.5, 0.7, 1.8, 16);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.5 });
-    const playerMesh = new THREE.Mesh(bodyGeo, bodyMat);
-    playerMesh.position.y = 0.9;
-    playerMesh.castShadow = true;
-    playerGroup.add(playerMesh);
-
-    // Đầu
-    const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-    const headMat = new THREE.MeshStandardMaterial({ color: 0xfbd5bd });
-    const headMesh = new THREE.Mesh(headGeo, headMat);
-    headMesh.position.y = 2.0;
-    headMesh.castShadow = true;
-    playerGroup.add(headMesh);
-
-    playerGroup.position.set(0, 0, 15);
-
-    // Chỉ số người chơi
-    const player = {
-      hp: 100,
-      maxHp: 100,
-      mp: 100,
-      maxMp: 100,
-      speed: 0.25,
-      orbitAngle: 0,
-      swordsCount: 12,
-      isDashing: false,
-      dashCooldown: 0,
-      shieldActive: false
-    };
-
-    // --- HỆ THỐNG PHI KIẾM QUANH THÂN (ORBIT SWORDS) ---
-    const swords = [];
-    const swordGeo = new THREE.ConeGeometry(0.08, 1.1, 8);
-    const swordMat = new THREE.MeshStandardMaterial({ 
-      color: 0x38bdf8, 
-      emissive: 0x0284c7, 
-      emissiveIntensity: 0.8,
-      metalness: 0.9, 
-      roughness: 0.1 
-    });
-
-    for (let i = 0; i < 12; i++) {
-      const sw = new THREE.Mesh(swordGeo, swordMat);
-      sw.castShadow = true;
-      scene.add(sw);
-      swords.push(sw);
+      for (let i = 0; i < 8; i++) {
+        const rad = (Math.PI * 2 / 8) * i;
+        ctx.save();
+        ctx.translate(512, 512); ctx.rotate(rad);
+        ctx.strokeRect(-25, 390, 50, 14);
+        ctx.strokeRect(-25, 420, 50, 14);
+        ctx.restore();
+      }
+      return new THREE.CanvasTexture(cv);
     }
 
-    // --- BOSS: CỰC ÂM MA TU ---
+    const arenaMesh = new THREE.Mesh(
+      new THREE.CylinderGeometry(36, 38, 2, 64),
+      new THREE.MeshStandardMaterial({ map: buildArenaTexture(), roughness: 0.35, metalness: 0.65 })
+    );
+    arenaMesh.position.y = -1;
+    arenaMesh.receiveShadow = true;
+    scene.add(arenaMesh);
+
+    // --- 3. TẠO THANH TRÚC PHONG VÂN KIẾM 3D TINH XẢO ---
+    function makeSword3D() {
+      const sw = new THREE.Group();
+      // Thân kiếm phát sáng
+      const blade = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 2.0, 0.02),
+        new THREE.MeshStandardMaterial({
+          color: 0xa7f3d0, emissive: 0x10b981, emissiveIntensity: 1.8,
+          metalness: 0.9, roughness: 0.1
+        })
+      );
+      blade.position.y = 1.0;
+      blade.castShadow = true;
+      sw.add(blade);
+
+      // Mũi nhọn
+      const tip = new THREE.Mesh(
+        new THREE.ConeGeometry(0.057, 0.45, 4),
+        blade.material
+      );
+      tip.position.y = 2.15; tip.rotation.y = Math.PI / 4;
+      sw.add(tip);
+
+      // Đốc kiếm mạ vàng
+      const guard = new THREE.Mesh(
+        new THREE.BoxGeometry(0.4, 0.08, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.9 })
+      );
+      sw.add(guard);
+      sw.scale.set(0.9, 0.9, 0.9);
+      return sw;
+    }
+
+    // --- 4. TẢI MÔ HÌNH NHÂN VẬT THỰC THỤ CÓ KHUNG XƯƠNG (GLTF LOADER) ---
+    const loader = new THREE.GLTFLoader();
+    const clock = new THREE.Clock();
+
+    let playerMixer, bossMixer;
+    const playerActions = {}, bossActions = {};
+    const playerGroup = new THREE.Group();
     const bossGroup = new THREE.Group();
+    scene.add(playerGroup);
     scene.add(bossGroup);
 
-    const bossBodyGeo = new THREE.CylinderGeometry(0.7, 0.9, 2.2, 16);
-    const bossBodyMat = new THREE.MeshStandardMaterial({ color: 0x450a0a, roughness: 0.4 });
-    const bossMesh = new THREE.Mesh(bossBodyGeo, bossBodyMat);
-    bossMesh.position.y = 1.1;
-    bossMesh.castShadow = true;
-    bossGroup.add(bossMesh);
+    playerGroup.position.set(0, 0, 16);
+    bossGroup.position.set(0, 0, -16);
 
-    const bossHeadGeo = new THREE.SphereGeometry(0.45, 16, 16);
-    const bossHeadMat = new THREE.MeshStandardMaterial({ color: 0x991b1b });
-    const bossHead = new THREE.Mesh(bossHeadGeo, bossHeadMat);
-    bossHead.position.y = 2.4;
-    bossGroup.add(bossHead);
+    // Dùng mô hình hoạt họa thực tế từ kho chuẩn glTF CDN
+    const MODEL_URL = 'https://threejs.org/examples/models/gltf/Soldier.glb';
 
-    bossGroup.position.set(0, 0, -15);
+    loader.load(MODEL_URL, function (gltf) {
+      // 1. Setup Nhân vật Người chơi (Hàn Lập)
+      const pModel = gltf.scene;
+      pModel.scale.set(2.2, 2.2, 2.2);
+      pModel.traverse(o => {
+        if (o.isMesh) {
+          o.castShadow = true;
+          o.material = new THREE.MeshStandardMaterial({
+            color: 0x0284c7, roughness: 0.4, metalness: 0.2
+          });
+        }
+      });
+      playerGroup.add(pModel);
 
-    const boss = {
-      hp: 500,
-      maxHp: 500,
-      speed: 0.12,
-      attackCooldown: 100,
-      state: 'chase'
+      playerMixer = new THREE.AnimationMixer(pModel);
+      playerActions['idle'] = playerMixer.clipAction(gltf.animations[0]);
+      playerActions['run'] = playerMixer.clipAction(gltf.animations[1]);
+      playerActions['attack'] = playerMixer.clipAction(gltf.animations[3]);
+      playerActions['idle'].play();
+
+      // 2. Setup Boss (Cực Âm Tổ Sư)
+      loader.load(MODEL_URL, function (bGltf) {
+        const bModel = bGltf.scene;
+        bModel.scale.set(2.6, 2.6, 2.6);
+        bModel.traverse(o => {
+          if (o.isMesh) {
+            o.castShadow = true;
+            o.material = new THREE.MeshStandardMaterial({
+              color: 0x7f1d1d, roughness: 0.3, emissive: 0x450a0a, emissiveIntensity: 0.6
+            });
+          }
+        });
+        bossGroup.add(bModel);
+
+        bossMixer = new THREE.AnimationMixer(bModel);
+        bossActions['idle'] = bossMixer.clipAction(bGltf.animations[0]);
+        bossActions['run'] = bossMixer.clipAction(bGltf.animations[1]);
+        bossActions['attack'] = bossMixer.clipAction(bGltf.animations[3]);
+        bossActions['idle'].play();
+
+        // Tải xong -> Ẩn màn hình loading
+        document.getElementById('loader').style.display = 'none';
+      });
+    });
+
+    // 12 Phi Kiếm Canh Kim lơ lửng quanh Hàn Lập
+    const orbitSwords = [];
+    for (let i = 0; i < 12; i++) {
+      const sw = makeSword3D();
+      scene.add(sw);
+      orbitSwords.push(sw);
+    }
+
+    // --- 5. LOGIC DỮ LIỆU & CHIẾN ĐẤU ---
+    const player = {
+      hp: 100, maxHp: 100, mp: 100, maxMp: 100,
+      swords: 12, speed: 0.28, orbitAngle: 0,
+      dashCd: 0, isDashing: false, isLocked: false
     };
 
-    // Quản lý đạn và kiếm trận
+    const boss = {
+      hp: 800, maxHp: 800, speed: 0.14, attackCd: 90
+    };
+
     const activeProjectiles = [];
     const bossProjectiles = [];
     const swordArrays = [];
 
-    // --- BỘ ĐIỀU KHIỂN & SỰ KIỆN ---
+    // --- 6. PHÍM ĐIỀU KHIỂN & SỰ KIỆN ---
     const keys = {};
     window.addEventListener('keydown', e => {
       keys[e.key.toLowerCase()] = true;
-
-      if (e.key === ' ' || e.key.toLowerCase() === 'k') {
-        castDash();
-      }
-      if (e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'u') {
-        castSwordArray();
-      }
-      if (e.key.toLowerCase() === 'e' || e.key.toLowerCase() === 'i') {
-        player.shieldActive = !player.shieldActive;
-      }
-      if (e.key.toLowerCase() === 'j') {
-        castShootSword();
+      if (e.key === ' ' || e.key.toLowerCase() === 'k') castDash();
+      if (e.key.toLowerCase() === 'q' || e.key.toLowerCase() === 'u') castSwordArray();
+      if (e.key.toLowerCase() === 'j') castShootSword();
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        player.isLocked = !player.isLocked;
+        document.getElementById('lock-reticle').style.display = player.isLocked ? 'block' : 'none';
       }
     });
+    window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+    window.addEventListener('mousedown', e => { if (e.button === 0) castShootSword(); });
 
-    window.addEventListener('keyup', e => {
-      keys[e.key.toLowerCase()] = false;
-    });
-
-    window.addEventListener('mousedown', e => {
-      if (e.button === 0) castShootSword();
-    });
-
-    window.addEventListener('resize', () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix;
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    // --- KỸ NĂNG & CHIÊU THỨC ---
-
-    // 1. Phóng phi kiếm bay đến Boss
+    // Kỹ năng 1: Phóng phi kiếm có vung tay
     function castShootSword() {
-      if (player.swordsCount <= 0) return;
-      player.swordsCount--;
+      if (player.swords <= 0) return;
+      player.swords--;
 
-      const startPos = playerGroup.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-      const targetPos = bossGroup.position.clone().add(new THREE.Vector3(0, 1.2, 0));
-      const dir = targetPos.sub(startPos).normalize();
+      // Kích hoạt animation chém kiếm của mô hình 3D
+      if (playerActions['attack']) {
+        playerActions['attack'].reset().fadeIn(0.1).play();
+        setTimeout(() => playerActions['attack'].fadeOut(0.2), 350);
+      }
 
-      const projectile = new THREE.Mesh(swordGeo, swordMat);
-      projectile.position.copy(startPos);
-      projectile.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-      scene.add(projectile);
+      const sw = makeSword3D();
+      const start = playerGroup.position.clone().add(new THREE.Vector3(0, 1.8, 0));
+      const target = bossGroup.position.clone().add(new THREE.Vector3(0, 1.8, 0));
+      const dir = target.sub(start).normalize();
 
-      activeProjectiles.push({
-        mesh: projectile,
-        dir: dir,
-        speed: 1.2,
-        life: 60,
-        damage: 22
-      });
+      sw.position.copy(start);
+      sw.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      scene.add(sw);
+
+      activeProjectiles.push({ mesh: sw, dir: dir, speed: 1.4, life: 60, damage: 25 });
     }
 
-    // 2. Phong Lôi Dực - Lướt 3D né đòn
+    // Kỹ năng 2: Phong Lôi Dực (Lướt chớp nhoáng)
     function castDash() {
-      if (player.dashCooldown > 0 || player.mp < 15) return;
+      if (player.dashCd > 0 || player.mp < 15) return;
       player.mp -= 15;
-      player.dashCooldown = 60;
+      player.dashCd = 50;
       player.isDashing = true;
 
-      const moveDir = new THREE.Vector3();
-      if (keys['w']) moveDir.z -= 1;
-      if (keys['s']) moveDir.z += 1;
-      if (keys['a']) moveDir.x -= 1;
-      if (keys['d']) moveDir.x += 1;
+      const dir = new THREE.Vector3();
+      if (keys['w']) dir.z -= 1;
+      if (keys['s']) dir.z += 1;
+      if (keys['a']) dir.x -= 1;
+      if (keys['d']) dir.x += 1;
+      if (dir.lengthSq() === 0) dir.z = -1;
+      dir.normalize();
 
-      if (moveDir.lengthSq() === 0) moveDir.z = -1;
-      moveDir.normalize();
+      playerGroup.position.addScaledVector(dir, 8.5);
+      if (playerGroup.position.length() > 33) playerGroup.position.setLength(33);
 
-      playerGroup.position.addScaledVector(moveDir, 7);
-
-      if (playerGroup.position.length() > 32) {
-        playerGroup.position.setLength(32);
-      }
-
-      setTimeout(() => { player.isDashing = false; }, 200);
+      setTimeout(() => player.isDashing = false, 200);
     }
 
-    // 3. Thanh Trúc Kiếm Trận (Phím Q / U)
+    // Kỹ năng 3: Thanh Trúc Kiếm Trận (12 Kiếm bao vây + Lôi Điện)
     function castSwordArray() {
-      if (player.mp < 40 || player.swordsCount < 6) return;
+      if (player.mp < 40 || player.swords < 6) return;
       player.mp -= 40;
-      player.swordsCount -= 6;
+      player.swords -= 6;
 
-      const targetCenter = bossGroup.position.clone();
-      targetCenter.y = 0.5;
+      const center = bossGroup.position.clone();
+      const group = new THREE.Group();
+      scene.add(group);
 
-      const arrayGroup = new THREE.Group();
-      scene.add(arrayGroup);
+      const count = 12;
+      const radius = 7;
+      const arrayMeshes = [];
 
-      const radius = 6;
-      const count = 10;
       for (let i = 0; i < count; i++) {
         const ang = (Math.PI * 2 / count) * i;
-        const arraySword = new THREE.Mesh(swordGeo, swordMat);
-        arraySword.position.set(
-          targetCenter.x + Math.cos(ang) * radius,
-          1.5,
-          targetCenter.z + Math.sin(ang) * radius
-        );
-        arraySword.rotation.x = Math.PI;
-        arrayGroup.add(arraySword);
+        const sw = makeSword3D();
+        sw.position.set(center.x + Math.cos(ang) * radius, 1.8, center.z + Math.sin(ang) * radius);
+        sw.rotation.x = Math.PI;
+        group.add(sw);
+        arrayMeshes.push(sw);
       }
 
       swordArrays.push({
-        group: arrayGroup,
-        center: targetCenter,
-        radius: radius,
-        duration: 300,
-        tick: 0
+        group: group, center: center, radius: radius,
+        swords: arrayMeshes, duration: 280, tick: 0
       });
     }
 
-    // Boss tấn công: Bắn Ma Hỏa
-    function bossCastAttack() {
-      const startPos = bossGroup.position.clone().add(new THREE.Vector3(0, 1.5, 0));
-      const dir = playerGroup.position.clone().sub(bossGroup.position).normalize();
-
-      const sphereGeo = new THREE.SphereGeometry(0.4, 16, 16);
-      const sphereMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
-      const ball = new THREE.Mesh(sphereGeo, sphereMat);
-      ball.position.copy(startPos);
-      scene.add(ball);
-
-      bossProjectiles.push({
-        mesh: ball,
-        dir: dir,
-        speed: 0.45,
-        damage: 18,
-        life: 120
-      });
-    }
-
-    // --- VÒNG LẶP LOGIC GAME (UPDATE) ---
-    function update() {
-      // Hồi phục Pháp Lực
-      if (player.mp < player.maxMp) player.mp += 0.08;
-      if (player.dashCooldown > 0) player.dashCooldown--;
-
-      // Hồi kiếm lơ lửng nếu còn slot
-      if (player.swordsCount < 12 && activeProjectiles.length === 0 && swordArrays.length === 0) {
-        player.swordsCount += 0.02;
+    // Boss tấn công: Cầu Ma Hỏa đỏ rực
+    function bossAttack() {
+      if (bossActions['attack']) {
+        bossActions['attack'].reset().fadeIn(0.1).play();
+        setTimeout(() => bossActions['attack'].fadeOut(0.2), 400);
       }
 
-      // Xử lý di chuyển
+      const start = bossGroup.position.clone().add(new THREE.Vector3(0, 2.0, 0));
+      const dir = playerGroup.position.clone().sub(bossGroup.position).normalize();
+
+      const ball = new THREE.Mesh(
+        new THREE.SphereGeometry(0.6, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xff1100 })
+      );
+      ball.position.copy(start);
+      scene.add(ball);
+
+      bossProjectiles.push({ mesh: ball, dir: dir, speed: 0.5, damage: 18, life: 120 });
+    }
+
+    // Vẽ tia sét Tịch Tà Thần Lôi nối giữa 2 kiếm
+    function drawLightning(p1, p2) {
+      const pts = [p1];
+      const segments = 5;
+      for (let i = 1; i < segments; i++) {
+        const mid = p1.clone().lerp(p2, i / segments);
+        mid.add(new THREE.Vector3((Math.random() - 0.5) * 1.0, (Math.random() - 0.5) * 1.0, (Math.random() - 0.5) * 1.0));
+        pts.push(mid);
+      }
+      pts.push(p2);
+
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.LineBasicMaterial({ color: 0x38bdf8, linewidth: 2 })
+      );
+      scene.add(line);
+      setTimeout(() => scene.remove(line), 60);
+    }
+
+    // --- 7. VÒNG LẶP RENDER & CẬP NHẬT TRẠNG THÁI ---
+    function update() {
+      const delta = clock.getDelta();
+      if (playerMixer) playerMixer.update(delta);
+      if (bossMixer) bossMixer.update(delta);
+
+      if (player.mp < player.maxMp) player.mp += 0.08;
+      if (player.dashCd > 0) player.dashCd--;
+
+      // Hồi kiếm lơ lửng
+      if (player.swords < 12 && activeProjectiles.length === 0 && swordArrays.length === 0) {
+        player.swords += 0.02;
+      }
+
+      // Di chuyển người chơi & đổi chuyển động hoạt họa (Blend Animation)
       const move = new THREE.Vector3();
       if (keys['w']) move.z -= 1;
       if (keys['s']) move.z += 1;
@@ -525,142 +484,182 @@
         move.normalize();
         playerGroup.position.addScaledVector(move, player.speed);
 
-        const targetAngle = Math.atan2(move.x, move.z);
-        playerGroup.rotation.y = targetAngle;
-      }
-
-      // Giới hạn trong sàn đấu
-      if (playerGroup.position.length() > 33) {
-        playerGroup.position.setLength(33);
-      }
-
-      // Cập nhật vị trí các thanh kiếm lơ lửng quanh người
-      player.orbitAngle += 0.03;
-      const currentCount = Math.floor(player.swordsCount);
-      for (let i = 0; i < 12; i++) {
-        if (i < currentCount) {
-          swords[i].visible = true;
-          const angle = player.orbitAngle + (Math.PI * 2 / currentCount) * i;
-          const dist = 2.2;
-          swords[i].position.set(
-            playerGroup.position.x + Math.cos(angle) * dist,
-            playerGroup.position.y + 1.2 + Math.sin(player.orbitAngle * 2 + i) * 0.25,
-            playerGroup.position.z + Math.sin(angle) * dist
-          );
-          swords[i].rotation.y = -angle;
-          swords[i].rotation.z = Math.PI / 6;
+        if (!player.isLocked) {
+          playerGroup.rotation.y = Math.atan2(move.x, move.z);
         } else {
-          swords[i].visible = false;
+          // Khi Lock-on, nhân vật luôn quay mặt về Boss
+          const toBoss = bossGroup.position.clone().sub(playerGroup.position);
+          playerGroup.rotation.y = Math.atan2(toBoss.x, toBoss.z);
+        }
+
+        if (playerActions['run'] && !playerActions['run'].isRunning()) {
+          playerActions['idle'].fadeOut(0.2);
+          playerActions['run'].reset().fadeIn(0.2).play();
+        }
+      } else {
+        if (playerActions['run'] && playerActions['run'].isRunning()) {
+          playerActions['run'].fadeOut(0.2);
+          playerActions['idle'].reset().fadeIn(0.2).play();
+        }
+        if (player.isLocked) {
+          const toBoss = bossGroup.position.clone().sub(playerGroup.position);
+          playerGroup.rotation.y = Math.atan2(toBoss.x, toBoss.z);
         }
       }
 
-      // Cập nhật phi kiếm bay
-      for (let i = activeProjectiles.length - 1; i >= 0; i--) {
-        const proj = activeProjectiles[i];
-        proj.mesh.position.addScaledVector(proj.dir, proj.speed);
-        proj.life--;
+      if (playerGroup.position.length() > 33) playerGroup.position.setLength(33);
 
-        const distToBoss = proj.mesh.position.distanceTo(bossGroup.position);
-        if (distToBoss < 2.0) {
-          boss.hp -= proj.damage;
-          scene.remove(proj.mesh);
+      // Quỹ đạo 12 Phi Kiếm xoay quanh thân
+      player.orbitAngle += 0.035;
+      const count = Math.floor(player.swords);
+      for (let i = 0; i < 12; i++) {
+        if (i < count) {
+          orbitSwords[i].visible = true;
+          const ang = player.orbitAngle + (Math.PI * 2 / count) * i;
+          orbitSwords[i].position.set(
+            playerGroup.position.x + Math.cos(ang) * 2.8,
+            playerGroup.position.y + 1.8 + Math.sin(player.orbitAngle * 2 + i) * 0.35,
+            playerGroup.position.z + Math.sin(ang) * 2.8
+          );
+          orbitSwords[i].rotation.y = -ang;
+          orbitSwords[i].rotation.z = Math.PI / 4;
+        } else {
+          orbitSwords[i].visible = false;
+        }
+      }
+
+      // Xử lý phi kiếm bay đi
+      for (let i = activeProjectiles.length - 1; i >= 0; i--) {
+        const sw = activeProjectiles[i];
+        sw.mesh.position.addScaledVector(sw.dir, sw.speed);
+        sw.life--;
+
+        if (sw.mesh.position.distanceTo(bossGroup.position.clone().add(new THREE.Vector3(0, 1.8, 0))) < 2.2) {
+          boss.hp -= sw.damage;
+          scene.remove(sw.mesh);
           activeProjectiles.splice(i, 1);
-          if (player.swordsCount < 12) player.swordsCount++;
+          if (player.swords < 12) player.swords++;
           continue;
         }
-
-        if (proj.life <= 0) {
-          scene.remove(proj.mesh);
+        if (sw.life <= 0) {
+          scene.remove(sw.mesh);
           activeProjectiles.splice(i, 1);
-          if (player.swordsCount < 12) player.swordsCount++;
+          if (player.swords < 12) player.swords++;
         }
       }
 
-      // Cập nhật Kiếm Trận
+      // Xử lý Kiếm Trận & Sét giật
       for (let i = swordArrays.length - 1; i >= 0; i--) {
         const arr = swordArrays[i];
         arr.duration--;
         arr.tick++;
-        arr.group.rotation.y += 0.02;
+        arr.group.rotation.y += 0.015;
 
-        const distToBoss = arr.center.distanceTo(bossGroup.position);
-        if (distToBoss < arr.radius) {
-          if (arr.tick % 20 === 0) {
-            boss.hp -= 10;
-          }
+        if (arr.tick % 6 === 0 && arr.swords.length > 2) {
+          const idx1 = Math.floor(Math.random() * arr.swords.length);
+          const idx2 = (idx1 + 4) % arr.swords.length;
+          const p1 = new THREE.Vector3(); arr.swords[idx1].getWorldPosition(p1);
+          const p2 = new THREE.Vector3(); arr.swords[idx2].getWorldPosition(p2);
+          drawLightning(p1, p2);
+        }
+
+        if (arr.center.distanceTo(bossGroup.position) < arr.radius) {
+          if (arr.tick % 15 === 0) boss.hp -= 12;
           bossGroup.position.lerp(arr.center, 0.02);
         }
 
         if (arr.duration <= 0) {
           scene.remove(arr.group);
           swordArrays.splice(i, 1);
-          player.swordsCount = Math.min(12, player.swordsCount + 6);
+          player.swords = Math.min(12, player.swords + 6);
         }
       }
 
       // AI Boss
       if (boss.hp > 0) {
         const toPlayer = playerGroup.position.clone().sub(bossGroup.position);
-        const dist = toPlayer.length();
-
         bossGroup.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
 
-        if (dist > 8) {
+        if (toPlayer.length() > 9) {
           toPlayer.normalize();
           bossGroup.position.addScaledVector(toPlayer, boss.speed);
+          if (bossActions['run'] && !bossActions['run'].isRunning()) {
+            bossActions['idle'].fadeOut(0.2);
+            bossActions['run'].reset().fadeIn(0.2).play();
+          }
+        } else {
+          if (bossActions['run'] && bossActions['run'].isRunning()) {
+            bossActions['run'].fadeOut(0.2);
+            bossActions['idle'].reset().fadeIn(0.2).play();
+          }
         }
 
-        boss.attackCooldown--;
-        if (boss.attackCooldown <= 0) {
-          boss.attackCooldown = 110;
-          bossCastAttack();
+        boss.attackCd--;
+        if (boss.attackCd <= 0) {
+          boss.attackCd = 110;
+          bossAttack();
         }
       } else {
-        document.getElementById('boss-state').innerText = "Trạng thái: Bị tiêu diệt!";
-        bossGroup.position.y = -10;
+        bossGroup.position.y = -20;
       }
 
-      // Cập nhật ma hỏa
+      // Xử lý Ma Hỏa của Boss
       for (let i = bossProjectiles.length - 1; i >= 0; i--) {
-        const bp = bossProjectiles[i];
-        bp.mesh.position.addScaledVector(bp.dir, bp.speed);
-        bp.life--;
+        const sp = bossProjectiles[i];
+        sp.mesh.position.addScaledVector(sp.dir, sp.speed);
+        sp.life--;
 
-        const distToPlayer = bp.mesh.position.distanceTo(playerGroup.position);
-        if (distToPlayer < 1.6) {
-          if (!player.isDashing) {
-            const dmg = player.shieldActive ? bp.damage * 0.3 : bp.damage;
-            player.hp -= dmg;
-          }
-          scene.remove(bp.mesh);
+        if (sp.mesh.position.distanceTo(playerGroup.position.clone().add(new THREE.Vector3(0, 1.8, 0))) < 1.8) {
+          if (!player.isDashing) player.hp -= sp.damage;
+          scene.remove(sp.mesh);
           bossProjectiles.splice(i, 1);
           continue;
         }
-
-        if (bp.life <= 0) {
-          scene.remove(bp.mesh);
+        if (sp.life <= 0) {
+          scene.remove(sp.mesh);
           bossProjectiles.splice(i, 1);
         }
       }
 
-      // Camera góc nhìn thứ ba bám sát người chơi
-      const cameraOffset = new THREE.Vector3(0, 5, 9);
-      camera.position.copy(playerGroup.position).add(cameraOffset);
-      camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.2, playerGroup.position.z - 4);
+      // Camera: Chuyển đổi giữa chế độ Tự do và Lock-on Soul-like
+      if (player.isLocked && boss.hp > 0) {
+        const midPoint = playerGroup.position.clone().lerp(bossGroup.position, 0.4);
+        const camPos = playerGroup.position.clone().add(
+          playerGroup.position.clone().sub(bossGroup.position).normalize().multiplyScalar(10).add(new THREE.Vector3(0, 6, 0))
+        );
+        camera.position.lerp(camPos, 0.1);
+        camera.lookAt(midPoint.x, midPoint.y + 1.8, midPoint.z);
 
-      // Cập nhật thanh máu & mana trên HUD
-      document.getElementById('player-hp').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
-      document.getElementById('player-mp').style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
-      document.getElementById('player-sense').style.width = `${(Math.floor(player.swordsCount) / 12) * 100}%`;
-      document.getElementById('boss-hp').style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+        // Cập nhật vị trí Reticle trên màn hình
+        const screenPos = bossGroup.position.clone().add(new THREE.Vector3(0, 2.5, 0)).project(camera);
+        const reticle = document.getElementById('lock-reticle');
+        reticle.style.left = `${(screenPos.x * 0.5 + 0.5) * window.innerWidth}px`;
+        reticle.style.top = `${(-screenPos.y * 0.5 + 0.5) * window.innerHeight}px`;
+      } else {
+        const camPos = playerGroup.position.clone().add(new THREE.Vector3(0, 6, 11));
+        camera.position.lerp(camPos, 0.1);
+        camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1.8, playerGroup.position.z - 4);
+      }
+
+      // Cập nhật UI
+      document.getElementById('hp-bar').style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+      document.getElementById('mp-bar').style.width = `${Math.max(0, (player.mp / player.maxMp) * 100)}%`;
+      document.getElementById('sense-bar').style.width = `${(Math.floor(player.swords) / 12) * 100}%`;
+      document.getElementById('boss-hp-fill').style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
     }
 
-    // Vòng lặp render chuẩn 60 FPS
     function animate() {
       requestAnimationFrame(animate);
       update();
-      renderer.render(scene, camera);
+      composer.render();
     }
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+    });
 
     animate();
   </script>
